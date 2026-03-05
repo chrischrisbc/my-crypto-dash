@@ -20,7 +20,7 @@
     <div class="header-stat">
         <p class="text-xs text-gray-400 uppercase font-bold tracking-widest mb-1">Total Active Portfolio PNL</p>
         <div id="total-pnl" class="text-6xl font-black text-white">--%</div>
-        <div id="total-status" class="text-xs mt-2 text-gray-500 italic">Connecting to Market...</div>
+        <div id="total-status" class="text-xs mt-2 text-gray-500 italic">Connecting to Stable API...</div>
         <div id="last-updated">Last Sync: --:--:--</div>
     </div>
 
@@ -38,11 +38,7 @@
                 skipEmptyLines: true,
                 complete: function(results) {
                     const data = results.data;
-                    const groupedPicks = {
-                        "Cryptochase Picks": {},
-                        "Krillin Picks": {},
-                        "Cryptocondom Picks": {}
-                    };
+                    const groupedPicks = { "Cryptochase Picks": {}, "Krillin Picks": {}, "Cryptocondom Picks": {} };
                     
                     data.forEach((row, index) => {
                         if(index === 0 && isNaN(parseFloat(row[1]))) return;
@@ -53,10 +49,7 @@
                         const isActive = row[2] ? row[2].toString().trim().toUpperCase() === 'TRUE' : false;
                         let rawCat = row[3] ? row[3].toString().trim() : "Cryptochase Picks";
                         
-                        if (!ALLOWED_CATEGORIES.includes(rawCat)) {
-                            rawCat = "Cryptochase Picks";
-                        }
-
+                        if (!ALLOWED_CATEGORIES.includes(rawCat)) rawCat = "Cryptochase Picks";
                         groupedPicks[rawCat][ticker] = { entry: entryPrice, active: isActive };
                     });
 
@@ -108,14 +101,13 @@
             if (!symbols) return;
 
             try {
-                // CHANGED TO V4 ENDPOINT TO SUPPORT NEW 2026 API KEYS
-                const url = `https://financialmodelingprep.com/api/v4/quote-simple?symbols=${symbols}&apikey=${STOCK_API_KEY}`;
+                // UPDATED TO STABLE ENDPOINT PER 2026 DOCUMENTATION
+                const url = `https://financialmodelingprep.com/stable/batch-quote-short?symbols=${symbols}&apikey=${STOCK_API_KEY}`;
                 const response = await fetch(url);
                 const stockData = await response.json();
                 
-                if (stockData["Error Message"] || stockData.error) {
-                    document.getElementById('total-status').innerHTML = `<span class="text-red-500 font-bold">API Error: Please check console</span>`;
-                    console.error("FMP Error:", stockData);
+                if (stockData.error || stockData["Error Message"]) {
+                    document.getElementById('total-status').innerHTML = `<span class="text-red-500 font-bold">STABLE API ERROR: ${stockData.error || "Check Key"}</span>`;
                     return;
                 }
 
@@ -146,9 +138,9 @@
                     const display = document.getElementById('total-pnl');
                     display.innerText = (totalPnl > 0 ? '+' : '') + totalPnl.toFixed(2) + '%';
                     display.className = `text-6xl font-black ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`;
-                    document.getElementById('total-status').innerHTML = `<span class="text-green-400">Live Connection Active</span>`;
+                    document.getElementById('total-status').innerHTML = `<span class="text-green-400">Stable Connection Active</span>`;
                 }
-            } catch (e) { console.error("Price fetch failed", e); }
+            } catch (e) { console.error("Stable fetch failed", e); }
         }
 
         init();
