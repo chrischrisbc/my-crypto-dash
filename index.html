@@ -1,150 +1,54 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>CryptoChase Portfolio Tracker</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    <style>
-        body { background-color: #0f172a; color: white; font-family: sans-serif; }
-        .card { background: #1e293b; border-radius: 12px; padding: 15px; border: 1px solid #334155; }
-        .sub-box { background: #0f172a; border-radius: 6px; padding: 8px; margin-top: 8px; border: 1px solid #1e293b; font-size: 0.75rem; color: #94a3b8; display: flex; justify-content: space-between; }
-        .section-title { border-left: 4px solid #3b82f6; padding-left: 10px; margin: 40px 0 20px 0; color: #f8fafc; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 1.25rem; }
-        .header-stat { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #334155; border-radius: 16px; padding: 25px; margin-bottom: 20px; text-align: center; }
-        #last-updated { font-size: 0.7rem; color: #64748b; margin-top: 10px; font-weight: bold; text-transform: uppercase; }
-        .empty-msg { color: #475569; font-style: italic; font-size: 0.875rem; padding: 10px; }
-    </style>
-</head>
-<body class="p-8">
-
-    <div class="header-stat">
-        <p class="text-xs text-gray-400 uppercase font-bold tracking-widest mb-1">Total Active Portfolio PNL</p>
-        <div id="total-pnl" class="text-6xl font-black text-white">--%</div>
-        <div id="total-status" class="text-xs mt-2 text-gray-500 italic">Connecting to Stable API...</div>
-        <div id="last-updated">Last Sync: --:--:--</div>
-    </div>
-
-    <div id="categories-container"></div>
-
-    <script>
-        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRUgllJlQ2MO7KQMq1kYNsFgXpAVEQtEQO9uWpKZdIS8aFr2ByijmE4zDEoZissO4hYrZcZtXAKOXLl/pub?gid=0&single=true&output=csv';
-        const STOCK_API_KEY = '9dYibo5d8EyDobkghUN87RxfgBZyzJTX';
-        const ALLOWED_CATEGORIES = ["Cryptochase Picks", "Krillin Picks", "Cryptocondom Picks"];
-
-        async function init() {
-            Papa.parse(SHEET_CSV_URL, {
-                download: true,
-                header: false,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    const data = results.data;
-                    const groupedPicks = { "Cryptochase Picks": {}, "Krillin Picks": {}, "Cryptocondom Picks": {} };
-                    
-                    data.forEach((row, index) => {
-                        if(index === 0 && isNaN(parseFloat(row[1]))) return;
-                        if(!row[0] || !row[1]) return;
-
-                        const ticker = row[0].toString().trim().toUpperCase();
-                        const entryPrice = parseFloat(row[1]);
-                        const isActive = row[2] ? row[2].toString().trim().toUpperCase() === 'TRUE' : false;
-                        let rawCat = row[3] ? row[3].toString().trim() : "Cryptochase Picks";
-                        
-                        if (!ALLOWED_CATEGORIES.includes(rawCat)) rawCat = "Cryptochase Picks";
-                        groupedPicks[rawCat][ticker] = { entry: entryPrice, active: isActive };
-                    });
-
-                    renderDashboard(groupedPicks);
-                    document.getElementById('last-updated').innerText = `Last Sync: ${new Date().toLocaleTimeString()}`;
-                }
-            });
-        }
-
-        function renderDashboard(groupedPicks) {
-            const mainContainer = document.getElementById('categories-container');
-            mainContainer.innerHTML = ''; 
-
-            ALLOWED_CATEGORIES.forEach(catName => {
-                const tickersInCat = Object.keys(groupedPicks[catName]);
-                const sectionId = `grid-${catName.replace(/\s+/g, '')}`;
-                
-                mainContainer.innerHTML += `
-                    <h2 class="section-title">${catName}</h2>
-                    <div id="${sectionId}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-10"></div>
-                `;
-
-                const grid = document.getElementById(sectionId);
-                if (tickersInCat.length > 0) {
-                    tickersInCat.forEach(ticker => {
-                        grid.innerHTML += `
-                            <div class="card">
-                                <p class="text-xs font-bold text-blue-400">${ticker}</p>
-                                <div id="price-${ticker}" class="text-2xl font-mono mt-1 mb-4 text-white">...</div>
-                                <div class="flex flex-col gap-1">
-                                    <div class="sub-box">Entry: <span class="text-white">$${groupedPicks[catName][ticker].entry.toFixed(2)}</span></div>
-                                    <div class="sub-box">PNL: <span id="pnl-${ticker}" class="text-white">0.00%</span></div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                } else {
-                    grid.innerHTML = `<div class="empty-msg">No active picks for this category.</div>`;
-                }
-            });
-
-            const allPicks = {};
-            ALLOWED_CATEGORIES.forEach(cat => Object.assign(allPicks, groupedPicks[cat]));
-            fetchPrices(allPicks);
-        }
+// ... (Keep your HTML/CSS the same, just replace the fetchPrices function inside the script)
 
         async function fetchPrices(allPicks) {
-            const symbols = Object.keys(allPicks).join(',');
-            if (!symbols) return;
+            const tickers = Object.keys(allPicks);
+            if (tickers.length === 0) return;
 
-            try {
-                // UPDATED TO STABLE ENDPOINT PER 2026 DOCUMENTATION
-                const url = `https://financialmodelingprep.com/stable/batch-quote-short?symbols=${symbols}&apikey=${STOCK_API_KEY}`;
-                const response = await fetch(url);
-                const stockData = await response.json();
-                
-                if (stockData.error || stockData["Error Message"]) {
-                    document.getElementById('total-status').innerHTML = `<span class="text-red-500 font-bold">STABLE API ERROR: ${stockData.error || "Check Key"}</span>`;
-                    return;
-                }
+            document.getElementById('total-status').innerText = "Syncing tickers one-by-one...";
+            
+            let totalEntryValue = 0;
+            let totalCurrentValue = 0;
+            let activeCount = 0;
 
-                let totalEntryValue = 0, totalCurrentValue = 0, activeCount = 0;
+            // We loop through each ticker individually to avoid batch errors
+            for (const symbol of tickers) {
+                try {
+                    const url = `https://financialmodelingprep.com/stable/quote?symbol=${symbol}&apikey=${STOCK_API_KEY}`;
+                    const response = await fetch(url);
+                    const data = await response.json();
 
-                stockData.forEach(item => {
-                    const priceElement = document.getElementById(`price-${item.symbol}`);
-                    if (priceElement) priceElement.innerText = '$' + item.price.toLocaleString(undefined, {minimumFractionDigits: 2});
+                    if (data && data.length > 0) {
+                        const item = data[0];
+                        const priceElement = document.getElementById(`price-${symbol}`);
+                        if (priceElement) priceElement.innerText = '$' + item.price.toLocaleString(undefined, {minimumFractionDigits: 2});
 
-                    const pick = allPicks[item.symbol];
-                    if (pick) {
+                        const pick = allPicks[symbol];
                         const pnlPercent = ((item.price - pick.entry) / pick.entry) * 100;
-                        const pnlElement = document.getElementById(`pnl-${item.symbol}`);
+                        const pnlElement = document.getElementById(`pnl-${symbol}`);
+                        
                         if (pnlElement) {
                             pnlElement.innerText = (pnlPercent > 0 ? '+' : '') + pnlPercent.toFixed(2) + '%';
                             pnlElement.className = pnlPercent >= 0 ? 'text-green-400' : 'text-red-400';
                         }
+
                         if (pick.active) {
                             totalEntryValue += pick.entry;
                             totalCurrentValue += item.price;
                             activeCount++;
                         }
                     }
-                });
-
-                if (activeCount > 0) {
-                    const totalPnl = ((totalCurrentValue - totalEntryValue) / totalEntryValue) * 100;
-                    const display = document.getElementById('total-pnl');
-                    display.innerText = (totalPnl > 0 ? '+' : '') + totalPnl.toFixed(2) + '%';
-                    display.className = `text-6xl font-black ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`;
-                    document.getElementById('total-status').innerHTML = `<span class="text-green-400">Stable Connection Active</span>`;
+                } catch (e) {
+                    console.error(`Failed to fetch ${symbol}`, e);
                 }
-            } catch (e) { console.error("Stable fetch failed", e); }
-        }
+            }
 
-        init();
-        setInterval(init, 60000);
-    </script>
-</body>
-</html>
+            if (activeCount > 0) {
+                const totalPnl = ((totalCurrentValue - totalEntryValue) / totalEntryValue) * 100;
+                const display = document.getElementById('total-pnl');
+                display.innerText = (totalPnl > 0 ? '+' : '') + totalPnl.toFixed(2) + '%';
+                display.className = `text-6xl font-black ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`;
+                document.getElementById('total-status').innerHTML = `<span class="text-green-400">Live Connection Active</span>`;
+            } else {
+                document.getElementById('total-status').innerHTML = `<span class="text-yellow-500">No active stock data found. Check tickers?</span>`;
+            }
+        }
