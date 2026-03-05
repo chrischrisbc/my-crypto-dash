@@ -10,7 +10,7 @@
         .sub-box { background: #0f172a; border-radius: 6px; padding: 8px; margin-top: 8px; border: 1px solid #1e293b; font-size: 0.75rem; color: #94a3b8; display: flex; justify-content: space-between; }
         .section-title { border-left: 4px solid #3b82f6; padding-left: 10px; margin-bottom: 20px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
         .header-stat { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #334155; border-radius: 16px; padding: 25px; margin-bottom: 40px; text-align: center; }
-    </script>
+    </style>
 </head>
 <body class="p-8">
 
@@ -27,16 +27,16 @@
     </div>
 
     <script>
-        // 1. EDIT YOUR TRADES HERE (Set active: true to include in Total PNL)
+        // 1. EDIT YOUR TRADES HERE
         const myPicks = {
             'SNDK': { entry: 85.00, active: true },
-            'MU':   { entry: 110.00, active: true },
+            'MU':   { entry: 110.00, active: false },
             'TSLA': { entry: 180.50, active: true },
             'NVDA': { entry: 120.00, active: true },
-            'GOOG': { entry: 150.00, active: true }
+            'GOOG': { entry: 150.00, active: false }
         };
 
-        // 2. REPLACE WITH YOUR KEY
+        // 2. YOUR FMP API KEY (Already included)
         const STOCK_API_KEY = '9dYibo5d8EyDobkghUN87RxfgBZyzJTX';
 
         // Initialize UI
@@ -74,12 +74,10 @@
                         const current = item.price;
                         const pnlPercent = ((current - entry) / entry) * 100;
 
-                        // Individual Card Update
                         const pnlElement = document.getElementById(`pnl-${item.symbol}`);
                         pnlElement.innerText = (pnlPercent > 0 ? '+' : '') + pnlPercent.toFixed(2) + '%';
                         pnlElement.className = pnlPercent >= 0 ? 'text-green-400' : 'text-red-400';
 
-                        // Total Calculation (Only if trade is active)
                         if (myPicks[item.symbol].active) {
                             totalEntryValue += entry;
                             totalCurrentValue += current;
@@ -88,7 +86,6 @@
                     }
                 });
 
-                // Update the Header Total
                 if (activeCount > 0) {
                     const totalPnlPercent = ((totalCurrentValue - totalEntryValue) / totalEntryValue) * 100;
                     const totalDisplay = document.getElementById('total-pnl');
