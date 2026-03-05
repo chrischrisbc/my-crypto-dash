@@ -12,6 +12,7 @@
         .section-title { border-left: 4px solid #3b82f6; padding-left: 10px; margin: 40px 0 20px 0; color: #f8fafc; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 1.25rem; }
         .header-stat { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #334155; border-radius: 16px; padding: 25px; margin-bottom: 20px; text-align: center; }
         #last-updated { font-size: 0.7rem; color: #64748b; margin-top: 10px; font-weight: bold; text-transform: uppercase; }
+        .empty-msg { color: #475569; font-style: italic; font-size: 0.875rem; padding: 10px; }
     </style>
 </head>
 <body class="p-8">
@@ -28,7 +29,6 @@
         const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRUgllJlQ2MO7KQMq1kYNsFgXpAVEQtEQO9uWpKZdIS8aFr2ByijmE4zDEoZissO4hYrZcZtXAKOXLl/pub?gid=0&single=true&output=csv';
         const STOCK_API_KEY = '9dYibo5d8EyDobkghUN87RxfgBZyzJTX';
 
-        // We will look for these specifically
         const ALLOWED_CATEGORIES = ["Cryptochase Picks", "Krillin Picks", "Cryptocondom Picks"];
 
         async function init() {
@@ -44,18 +44,14 @@
                     };
                     
                     data.forEach((row, index) => {
-                        // Skip header row
                         if(index === 0 && isNaN(parseFloat(row[1]))) return;
 
                         if(row[0] && row[1]) {
                             const ticker = row[0].trim().toUpperCase();
                             const entryPrice = parseFloat(row[1]);
                             const isActive = row[2] ? row[2].trim().toUpperCase() === 'TRUE' : false;
-                            
-                            // Check if Column D has a category, otherwise default to Cryptochase
                             let rawCat = row[3] ? row[3].trim() : "Cryptochase Picks";
                             
-                            // If they typed something else, put it in Cryptochase
                             if (!ALLOWED_CATEGORIES.includes(rawCat)) {
                                 rawCat = "Cryptochase Picks";
                             }
@@ -79,16 +75,17 @@
 
             ALLOWED_CATEGORIES.forEach(catName => {
                 const tickersInCat = Object.keys(groupedPicks[catName]);
+                const sectionId = `grid-${catName.replace(/\s+/g, '')}`;
                 
-                // Only show the section if it has stocks in it
-                if (tickersInCat.length > 0) {
-                    const sectionId = `grid-${catName.replace(/\s+/g, '')}`;
-                    mainContainer.innerHTML += `
-                        <h2 class="section-title">${catName}</h2>
-                        <div id="${sectionId}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-10"></div>
-                    `;
+                // ALWAYS render the header
+                mainContainer.innerHTML += `
+                    <h2 class="section-title">${catName}</h2>
+                    <div id="${sectionId}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-10"></div>
+                `;
 
-                    const grid = document.getElementById(sectionId);
+                const grid = document.getElementById(sectionId);
+                
+                if (tickersInCat.length > 0) {
                     tickersInCat.forEach(ticker => {
                         grid.innerHTML += `
                             <div class="card">
@@ -101,10 +98,12 @@
                             </div>
                         `;
                     });
+                } else {
+                    // Show this if the category is empty
+                    grid.innerHTML = `<div class="empty-msg">No active picks for this category.</div>`;
                 }
             });
 
-            // Combine all picks into one list for the Price API
             const allPicks = {};
             ALLOWED_CATEGORIES.forEach(cat => {
                 Object.assign(allPicks, groupedPicks[cat]);
