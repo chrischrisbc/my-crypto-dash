@@ -6,7 +6,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0f172a; color: white; font-family: sans-serif; }
-        .card { background: #1e293b; border-radius: 12px; padding: 15px; border: 1px solid #334155; }
+        .card { background: #1e293b; border-radius: 12px; padding: 15px; border: 1px solid #334155; height: 100%; }
+        .sub-box { background: #0f172a; border-radius: 6px; padding: 8px; margin-top: 8px; border: 1px solid #1e293b; font-size: 0.75rem; color: #94a3b8; }
         .section-title { border-left: 4px solid #3b82f6; padding-left: 10px; margin-bottom: 20px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
@@ -43,21 +44,35 @@
 
     <div class="mb-12">
         <h2 class="section-title">CryptoChase Picks</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-            <div class="card"><p class="text-xs text-gray-400">SNDK</p><div id="price-SNDK" class="text-xl font-mono mt-1">...</div></div>
-            <div class="card"><p class="text-xs text-gray-400">MU</p><div id="price-MU" class="text-xl font-mono mt-1">...</div></div>
-            <div class="card"><p class="text-xs text-gray-400">TSLA</p><div id="price-TSLA" class="text-xl font-mono mt-1">...</div></div>
-            <div class="card"><p class="text-xs text-gray-400">NVDA</p><div id="price-NVDA" class="text-xl font-mono mt-1">...</div></div>
-            <div class="card"><p class="text-xs text-gray-400">GOOG</p><div id="price-GOOG" class="text-xl font-mono mt-1">...</div></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            
+            <script>
+                const picks = ['SNDK', 'MU', 'TSLA', 'NVDA', 'GOOG'];
+                picks.forEach(ticker => {
+                    document.write(`
+                        <div class="card">
+                            <p class="text-xs font-bold text-blue-400">${ticker}</p>
+                            <div id="price-${ticker}" class="text-2xl font-mono mt-1 mb-4">...</div>
+                            
+                            <div class="flex flex-col gap-2">
+                                <div class="sub-box">Entry Price: <span class="text-white">--</span></div>
+                                <div class="sub-box">Entered: <span class="text-red-400">No</span></div>
+                                <div class="sub-box">PNL: <span class="text-white">0.00%</span></div>
+                            </div>
+                        </div>
+                    `);
+                });
+            </script>
+            
         </div>
     </div>
 
     <script>
-        // REPLACE THIS with your key from Financial Modeling Prep
+        // Use your API key here
         const STOCK_API_KEY = '9dYibo5d8EyDobkghUN87RxfgBZyzJTX';
 
         async function fetchAllData() {
-            // 1. Fetch Crypto (Bitcoin & Hyperliquid)
+            // Fetch Crypto
             try {
                 const cryptoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,hyperliquid&vs_currencies=usd');
                 const cryptoData = await cryptoRes.json();
@@ -65,7 +80,7 @@
                 document.getElementById('price-hyperliquid').innerText = '$' + cryptoData.hyperliquid.usd.toLocaleString();
             } catch (e) { console.error("Crypto error", e); }
 
-            // 2. Fetch Stocks & Gold (SPY, GLD, and Picks)
+            // Fetch Stocks & Gold
             try {
                 const symbols = 'SPY,GLD,SNDK,MU,TSLA,NVDA,GOOG';
                 const stockRes = await fetch(`https://financialmodelingprep.com/api/v3/quote/${symbols}?apikey=${STOCK_API_KEY}`);
@@ -81,7 +96,7 @@
         }
 
         fetchAllData();
-        setInterval(fetchAllData, 60000); // Update every minute
+        setInterval(fetchAllData, 60000);
     </script>
 </body>
 </html>
