@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CryptoChase Live Sync Tracker</title>
+    <title>CryptoChase Portfolio Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
@@ -20,6 +20,7 @@
     <div class="header-stat">
         <p class="text-xs text-gray-400 uppercase font-bold tracking-widest mb-1">Total Active Portfolio PNL</p>
         <div id="total-pnl" class="text-6xl font-black text-white">--%</div>
+        <div id="total-status" class="text-xs mt-2 text-gray-500 italic">Connecting to Market...</div>
         <div id="last-updated">Last Sync: --:--:--</div>
     </div>
 
@@ -44,7 +45,6 @@
                     };
                     
                     data.forEach((row, index) => {
-                        // Skip header or empty rows
                         if(index === 0 && isNaN(parseFloat(row[1]))) return;
                         if(!row[0] || !row[1]) return;
 
@@ -108,15 +108,14 @@
             if (!symbols) return;
 
             try {
-                const url = `https://financialmodelingprep.com/api/v3/quote/${symbols}?apikey=${STOCK_API_KEY}`;
+                // CHANGED TO V4 ENDPOINT TO SUPPORT NEW 2026 API KEYS
+                const url = `https://financialmodelingprep.com/api/v4/quote-simple?symbols=${symbols}&apikey=${STOCK_API_KEY}`;
                 const response = await fetch(url);
                 const stockData = await response.json();
                 
-                // DIAGNOSTIC LOG: This helps you see what the API actually sends back
-                console.log("FMP API Response:", stockData);
-
-                if (!Array.isArray(stockData)) {
-                    console.error("API returned an error or non-array:", stockData);
+                if (stockData["Error Message"] || stockData.error) {
+                    document.getElementById('total-status').innerHTML = `<span class="text-red-500 font-bold">API Error: Please check console</span>`;
+                    console.error("FMP Error:", stockData);
                     return;
                 }
 
@@ -147,6 +146,7 @@
                     const display = document.getElementById('total-pnl');
                     display.innerText = (totalPnl > 0 ? '+' : '') + totalPnl.toFixed(2) + '%';
                     display.className = `text-6xl font-black ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`;
+                    document.getElementById('total-status').innerHTML = `<span class="text-green-400">Live Connection Active</span>`;
                 }
             } catch (e) { console.error("Price fetch failed", e); }
         }
