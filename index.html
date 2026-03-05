@@ -28,8 +28,8 @@
         const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRUgllJlQ2MO7KQMq1kYNsFgXpAVEQtEQO9uWpKZdIS8aFr2ByijmE4zDEoZissO4hYrZcZtXAKOXLl/pub?gid=0&single=true&output=csv';
         const STOCK_API_KEY = '9dYibo5d8EyDobkghUN87RxfgBZyzJTX';
 
-        // The order you want them to appear
-        const CATEGORY_ORDER = ["Cryptochase Picks", "Krillin Picks", "Cryptocondom Picks"];
+        // We will look for these specifically
+        const ALLOWED_CATEGORIES = ["Cryptochase Picks", "Krillin Picks", "Cryptocondom Picks"];
 
         async function init() {
             Papa.parse(SHEET_CSV_URL, {
@@ -37,19 +37,32 @@
                 header: false,
                 complete: function(results) {
                     const data = results.data;
-                    const groupedPicks = {};
+                    const groupedPicks = {
+                        "Cryptochase Picks": {},
+                        "Krillin Picks": {},
+                        "Cryptocondom Picks": {}
+                    };
                     
                     data.forEach((row, index) => {
+                        // Skip header row
                         if(index === 0 && isNaN(parseFloat(row[1]))) return;
+
                         if(row[0] && row[1]) {
                             const ticker = row[0].trim().toUpperCase();
-                            const cat = row[3] ? row[3].trim() : "Uncategorized";
+                            const entryPrice = parseFloat(row[1]);
+                            const isActive = row[2] ? row[2].trim().toUpperCase() === 'TRUE' : false;
                             
-                            if (!groupedPicks[cat]) groupedPicks[cat] = {};
+                            // Check if Column D has a category, otherwise default to Cryptochase
+                            let rawCat = row[3] ? row[3].trim() : "Cryptochase Picks";
                             
-                            groupedPicks[cat][ticker] = {
-                                entry: parseFloat(row[1]),
-                                active: row[2] ? row[2].trim().toUpperCase() === 'TRUE' : false
+                            // If they typed something else, put it in Cryptochase
+                            if (!ALLOWED_CATEGORIES.includes(rawCat)) {
+                                rawCat = "Cryptochase Picks";
+                            }
+
+                            groupedPicks[rawCat][ticker] = {
+                                entry: entryPrice,
+                                active: isActive
                             };
                         }
                     });
@@ -64,17 +77,19 @@
             const mainContainer = document.getElementById('categories-container');
             mainContainer.innerHTML = ''; 
 
-            // Loop through our specific order
-            CATEGORY_ORDER.forEach(catName => {
-                if (groupedPicks[catName]) {
-                    const sectionHtml = `
+            ALLOWED_CATEGORIES.forEach(catName => {
+                const tickersInCat = Object.keys(groupedPicks[catName]);
+                
+                // Only show the section if it has stocks in it
+                if (tickersInCat.length > 0) {
+                    const sectionId = `grid-${catName.replace(/\s+/g, '')}`;
+                    mainContainer.innerHTML += `
                         <h2 class="section-title">${catName}</h2>
-                        <div id="grid-${catName.replace(/\s+/g, '')}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6"></div>
+                        <div id="${sectionId}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-10"></div>
                     `;
-                    mainContainer.innerHTML += sectionHtml;
 
-                    const grid = document.getElementById(`grid-${catName.replace(/\s+/g, '')}`);
-                    Object.keys(groupedPicks[catName]).forEach(ticker => {
+                    const grid = document.getElementById(sectionId);
+                    tickersInCat.forEach(ticker => {
                         grid.innerHTML += `
                             <div class="card">
                                 <p class="text-xs font-bold text-blue-400">${ticker}</p>
@@ -89,14 +104,20 @@
                 }
             });
 
-            // Flatten for API call
-            const allPicks = Object.assign({}, ...Object.values(groupedPicks));
+            // Combine all picks into one list for the Price API
+            const allPicks = {};
+            ALLOWED_CATEGORIES.forEach(cat => {
+                Object.assign(allPicks, groupedPicks[cat]);
+            });
+            
             fetchPrices(allPicks);
         }
 
         async function fetchPrices(allPicks) {
+            const symbols = Object.keys(allPicks).join(',');
+            if (!symbols) return;
+
             try {
-                const symbols = Object.keys(allPicks).join(',');
                 const response = await fetch(`https://financialmodelingprep.com/api/v3/quote/${symbols}?apikey=${STOCK_API_KEY}`);
                 const stockData = await response.json();
                 
@@ -107,18 +128,20 @@
                     if (priceElement) priceElement.innerText = '$' + item.price.toLocaleString(undefined, {minimumFractionDigits: 2});
 
                     const pick = allPicks[item.symbol];
-                    const pnlPercent = ((item.price - pick.entry) / pick.entry) * 100;
-                    const pnlElement = document.getElementById(`pnl-${item.symbol}`);
-                    
-                    if (pnlElement) {
-                        pnlElement.innerText = (pnlPercent > 0 ? '+' : '') + pnlPercent.toFixed(2) + '%';
-                        pnlElement.className = pnlPercent >= 0 ? 'text-green-400' : 'text-red-400';
-                    }
+                    if (pick) {
+                        const pnlPercent = ((item.price - pick.entry) / pick.entry) * 100;
+                        const pnlElement = document.getElementById(`pnl-${item.symbol}`);
+                        
+                        if (pnlElement) {
+                            pnlElement.innerText = (pnlPercent > 0 ? '+' : '') + pnlPercent.toFixed(2) + '%';
+                            pnlElement.className = pnlPercent >= 0 ? 'text-green-400' : 'text-red-400';
+                        }
 
-                    if (pick.active) {
-                        totalEntryValue += pick.entry;
-                        totalCurrentValue += item.price;
-                        activeCount++;
+                        if (pick.active) {
+                            totalEntryValue += pick.entry;
+                            totalCurrentValue += item.price;
+                            activeCount++;
+                        }
                     }
                 });
 
@@ -128,7 +151,7 @@
                     display.innerText = (totalPnl > 0 ? '+' : '') + totalPnl.toFixed(2) + '%';
                     display.className = `text-6xl font-black ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`;
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Price fetch failed", e); }
         }
 
         init();
