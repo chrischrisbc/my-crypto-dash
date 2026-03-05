@@ -2,97 +2,102 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>My Crypto & Equity Command Center</title>
+    <title>CryptoChase Portfolio Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0f172a; color: white; font-family: sans-serif; }
-        .card { background: #1e293b; border-radius: 12px; padding: 15px; border: 1px solid #334155; height: 100%; }
-        .sub-box { background: #0f172a; border-radius: 6px; padding: 8px; margin-top: 8px; border: 1px solid #1e293b; font-size: 0.75rem; color: #94a3b8; }
+        .card { background: #1e293b; border-radius: 12px; padding: 15px; border: 1px solid #334155; }
+        .sub-box { background: #0f172a; border-radius: 6px; padding: 8px; margin-top: 8px; border: 1px solid #1e293b; font-size: 0.75rem; color: #94a3b8; display: flex; justify-content: space-between; }
         .section-title { border-left: 4px solid #3b82f6; padding-left: 10px; margin-bottom: 20px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-    </style>
+        .header-stat { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #334155; border-radius: 16px; padding: 25px; margin-bottom: 40px; text-align: center; }
+    </script>
 </head>
 <body class="p-8">
-    <h1 class="text-4xl font-extrabold mb-10 text-white">Market Intelligence</h1>
 
-    <div class="mb-12">
-        <h2 class="section-title">Cryptocurrency</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="card">
-                <p class="text-xs text-gray-400">Bitcoin (BTC)</p>
-                <div id="price-bitcoin" class="text-3xl font-mono mt-1 text-orange-400">Loading...</div>
-            </div>
-            <div class="card">
-                <p class="text-xs text-gray-400">Hyperliquid (HYPE)</p>
-                <div id="price-hyperliquid" class="text-3xl font-mono mt-1 text-blue-400">Loading...</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="mb-12">
-        <h2 class="section-title">Equities</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="card">
-                <p class="text-xs text-gray-400">S&P 500 (SPY)</p>
-                <div id="price-SPY" class="text-3xl font-mono mt-1">Loading...</div>
-            </div>
-            <div class="card">
-                <p class="text-xs text-gray-400">Gold (GLD)</p>
-                <div id="price-GLD" class="text-3xl font-mono mt-1 text-yellow-500">Loading...</div>
-            </div>
-        </div>
+    <div class="header-stat">
+        <p class="text-xs text-gray-400 uppercase font-bold tracking-widest mb-1">Total Active Portfolio PNL</p>
+        <div id="total-pnl" class="text-6xl font-black text-white">0.00%</div>
+        <p id="total-status" class="text-xs mt-2 text-gray-500 italic">Calculating live performance...</p>
     </div>
 
     <div class="mb-12">
         <h2 class="section-title">CryptoChase Picks</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            
-            <script>
-                const picks = ['SNDK', 'MU', 'TSLA', 'NVDA', 'GOOG'];
-                picks.forEach(ticker => {
-                    document.write(`
-                        <div class="card">
-                            <p class="text-xs font-bold text-blue-400">${ticker}</p>
-                            <div id="price-${ticker}" class="text-2xl font-mono mt-1 mb-4">...</div>
-                            
-                            <div class="flex flex-col gap-2">
-                                <div class="sub-box">Entry Price: <span class="text-white">--</span></div>
-                                <div class="sub-box">Entered: <span class="text-red-400">No</span></div>
-                                <div class="sub-box">PNL: <span class="text-white">0.00%</span></div>
-                            </div>
-                        </div>
-                    `);
-                });
-            </script>
-            
-        </div>
+        <div id="picks-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            </div>
     </div>
 
     <script>
-        // Use your API key here
+        // 1. EDIT YOUR TRADES HERE (Set active: true to include in Total PNL)
+        const myPicks = {
+            'SNDK': { entry: 85.00, active: true },
+            'MU':   { entry: 110.00, active: true },
+            'TSLA': { entry: 180.50, active: true },
+            'NVDA': { entry: 120.00, active: true },
+            'GOOG': { entry: 150.00, active: true }
+        };
+
+        // 2. REPLACE WITH YOUR KEY
         const STOCK_API_KEY = '9dYibo5d8EyDobkghUN87RxfgBZyzJTX';
 
-        async function fetchAllData() {
-            // Fetch Crypto
-            try {
-                const cryptoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,hyperliquid&vs_currencies=usd');
-                const cryptoData = await cryptoRes.json();
-                document.getElementById('price-bitcoin').innerText = '$' + cryptoData.bitcoin.usd.toLocaleString();
-                document.getElementById('price-hyperliquid').innerText = '$' + cryptoData.hyperliquid.usd.toLocaleString();
-            } catch (e) { console.error("Crypto error", e); }
+        // Initialize UI
+        const container = document.getElementById('picks-container');
+        Object.keys(myPicks).forEach(ticker => {
+            container.innerHTML += `
+                <div class="card">
+                    <p class="text-xs font-bold text-blue-400">${ticker}</p>
+                    <div id="price-${ticker}" class="text-2xl font-mono mt-1 mb-4 text-white">...</div>
+                    <div class="flex flex-col gap-1">
+                        <div class="sub-box">Entry Price: <span class="text-white">$${myPicks[ticker].entry.toFixed(2)}</span></div>
+                        <div class="sub-box">Entered: <span class="${myPicks[ticker].active ? 'text-green-400' : 'text-red-400'}">${myPicks[ticker].active ? 'Yes' : 'No'}</span></div>
+                        <div class="sub-box">PNL: <span id="pnl-${ticker}" class="text-white">0.00%</span></div>
+                    </div>
+                </div>
+            `;
+        });
 
-            // Fetch Stocks & Gold
+        async function fetchAllData() {
             try {
-                const symbols = 'SPY,GLD,SNDK,MU,TSLA,NVDA,GOOG';
+                const symbols = Object.keys(myPicks).join(',');
                 const stockRes = await fetch(`https://financialmodelingprep.com/api/v3/quote/${symbols}?apikey=${STOCK_API_KEY}`);
                 const stockData = await stockRes.json();
                 
+                let totalEntryValue = 0;
+                let totalCurrentValue = 0;
+                let activeCount = 0;
+
                 stockData.forEach(item => {
-                    const element = document.getElementById(`price-${item.symbol}`);
-                    if (element) {
-                        element.innerText = '$' + item.price.toLocaleString(undefined, {minimumFractionDigits: 2});
+                    const priceElement = document.getElementById(`price-${item.symbol}`);
+                    if (priceElement) priceElement.innerText = '$' + item.price.toLocaleString(undefined, {minimumFractionDigits: 2});
+
+                    if (myPicks[item.symbol]) {
+                        const entry = myPicks[item.symbol].entry;
+                        const current = item.price;
+                        const pnlPercent = ((current - entry) / entry) * 100;
+
+                        // Individual Card Update
+                        const pnlElement = document.getElementById(`pnl-${item.symbol}`);
+                        pnlElement.innerText = (pnlPercent > 0 ? '+' : '') + pnlPercent.toFixed(2) + '%';
+                        pnlElement.className = pnlPercent >= 0 ? 'text-green-400' : 'text-red-400';
+
+                        // Total Calculation (Only if trade is active)
+                        if (myPicks[item.symbol].active) {
+                            totalEntryValue += entry;
+                            totalCurrentValue += current;
+                            activeCount++;
+                        }
                     }
                 });
-            } catch (e) { console.error("Stock error", e); }
+
+                // Update the Header Total
+                if (activeCount > 0) {
+                    const totalPnlPercent = ((totalCurrentValue - totalEntryValue) / totalEntryValue) * 100;
+                    const totalDisplay = document.getElementById('total-pnl');
+                    totalDisplay.innerText = (totalPnlPercent > 0 ? '+' : '') + totalPnlPercent.toFixed(2) + '%';
+                    totalDisplay.className = `text-6xl font-black ${totalPnlPercent >= 0 ? 'text-green-400' : 'text-red-400'}`;
+                    document.getElementById('total-status').innerText = `Based on ${activeCount} active trades`;
+                }
+
+            } catch (e) { console.error("Update failed", e); }
         }
 
         fetchAllData();
