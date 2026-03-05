@@ -2,15 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CryptoChase Live Sync Tracker</title>
+    <title>CryptoChase Multi-Category Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         body { background-color: #0f172a; color: white; font-family: sans-serif; }
         .card { background: #1e293b; border-radius: 12px; padding: 15px; border: 1px solid #334155; }
         .sub-box { background: #0f172a; border-radius: 6px; padding: 8px; margin-top: 8px; border: 1px solid #1e293b; font-size: 0.75rem; color: #94a3b8; display: flex; justify-content: space-between; }
-        .section-title { border-left: 4px solid #3b82f6; padding-left: 10px; margin-bottom: 20px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-        .header-stat { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #334155; border-radius: 16px; padding: 25px; margin-bottom: 40px; text-align: center; }
+        .section-title { border-left: 4px solid #3b82f6; padding-left: 10px; margin: 40px 0 20px 0; color: #f8fafc; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 1.25rem; }
+        .header-stat { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #334155; border-radius: 16px; padding: 25px; margin-bottom: 20px; text-align: center; }
+        #last-updated { font-size: 0.7rem; color: #64748b; margin-top: 10px; font-weight: bold; text-transform: uppercase; }
     </style>
 </head>
 <body class="p-8">
@@ -18,19 +19,17 @@
     <div class="header-stat">
         <p class="text-xs text-gray-400 uppercase font-bold tracking-widest mb-1">Total Active Portfolio PNL</p>
         <div id="total-pnl" class="text-6xl font-black text-white">--%</div>
-        <p id="total-status" class="text-xs mt-2 text-gray-500 italic">Syncing with Google Sheets...</p>
+        <div id="last-updated">Last Sync: --:--:--</div>
     </div>
 
-    <div class="mb-12">
-        <h2 class="section-title">Live Portfolio</h2>
-        <div id="picks-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            </div>
-    </div>
+    <div id="categories-container"></div>
 
     <script>
-        // Your specific links and keys
         const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRUgllJlQ2MO7KQMq1kYNsFgXpAVEQtEQO9uWpKZdIS8aFr2ByijmE4zDEoZissO4hYrZcZtXAKOXLl/pub?gid=0&single=true&output=csv';
         const STOCK_API_KEY = '9dYibo5d8EyDobkghUN87RxfgBZyzJTX';
+
+        // The order you want them to appear
+        const CATEGORY_ORDER = ["Cryptochase Picks", "Krillin Picks", "Cryptocondom Picks"];
 
         async function init() {
             Papa.parse(SHEET_CSV_URL, {
@@ -38,94 +37,101 @@
                 header: false,
                 complete: function(results) {
                     const data = results.data;
-                    const myPicks = {};
+                    const groupedPicks = {};
                     
                     data.forEach((row, index) => {
-                        // Skip the first row if it's a header like "Ticker, Entry, Active"
                         if(index === 0 && isNaN(parseFloat(row[1]))) return;
-
                         if(row[0] && row[1]) {
                             const ticker = row[0].trim().toUpperCase();
-                            myPicks[ticker] = {
+                            const cat = row[3] ? row[3].trim() : "Uncategorized";
+                            
+                            if (!groupedPicks[cat]) groupedPicks[cat] = {};
+                            
+                            groupedPicks[cat][ticker] = {
                                 entry: parseFloat(row[1]),
                                 active: row[2] ? row[2].trim().toUpperCase() === 'TRUE' : false
                             };
                         }
                     });
 
-                    renderDashboard(myPicks);
+                    renderDashboard(groupedPicks);
+                    document.getElementById('last-updated').innerText = `Last Sync: ${new Date().toLocaleTimeString()}`;
                 }
             });
         }
 
-        function renderDashboard(myPicks) {
-            const container = document.getElementById('picks-container');
-            container.innerHTML = ''; 
-            
-            Object.keys(myPicks).forEach(ticker => {
-                container.innerHTML += `
-                    <div class="card">
-                        <p class="text-xs font-bold text-blue-400">${ticker}</p>
-                        <div id="price-${ticker}" class="text-2xl font-mono mt-1 mb-4 text-white">...</div>
-                        <div class="flex flex-col gap-1">
-                            <div class="sub-box">Entry Price: <span class="text-white">$${myPicks[ticker].entry.toFixed(2)}</span></div>
-                            <div class="sub-box">Entered: <span class="${myPicks[ticker].active ? 'text-green-400' : 'text-red-400'}">${myPicks[ticker].active ? 'Yes' : 'No'}</span></div>
-                            <div class="sub-box">PNL: <span id="pnl-${ticker}" class="text-white">0.00%</span></div>
-                        </div>
-                    </div>
-                `;
+        function renderDashboard(groupedPicks) {
+            const mainContainer = document.getElementById('categories-container');
+            mainContainer.innerHTML = ''; 
+
+            // Loop through our specific order
+            CATEGORY_ORDER.forEach(catName => {
+                if (groupedPicks[catName]) {
+                    const sectionHtml = `
+                        <h2 class="section-title">${catName}</h2>
+                        <div id="grid-${catName.replace(/\s+/g, '')}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6"></div>
+                    `;
+                    mainContainer.innerHTML += sectionHtml;
+
+                    const grid = document.getElementById(`grid-${catName.replace(/\s+/g, '')}`);
+                    Object.keys(groupedPicks[catName]).forEach(ticker => {
+                        grid.innerHTML += `
+                            <div class="card">
+                                <p class="text-xs font-bold text-blue-400">${ticker}</p>
+                                <div id="price-${ticker}" class="text-2xl font-mono mt-1 mb-4 text-white">...</div>
+                                <div class="flex flex-col gap-1">
+                                    <div class="sub-box">Entry: <span class="text-white">$${groupedPicks[catName][ticker].entry.toFixed(2)}</span></div>
+                                    <div class="sub-box">PNL: <span id="pnl-${ticker}" class="text-white">0.00%</span></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
             });
 
-            fetchPrices(myPicks);
+            // Flatten for API call
+            const allPicks = Object.assign({}, ...Object.values(groupedPicks));
+            fetchPrices(allPicks);
         }
 
-        async function fetchPrices(myPicks) {
+        async function fetchPrices(allPicks) {
             try {
-                const symbols = Object.keys(myPicks).join(',');
+                const symbols = Object.keys(allPicks).join(',');
                 const response = await fetch(`https://financialmodelingprep.com/api/v3/quote/${symbols}?apikey=${STOCK_API_KEY}`);
                 const stockData = await response.json();
                 
-                let totalEntryValue = 0;
-                let totalCurrentValue = 0;
-                let activeCount = 0;
+                let totalEntryValue = 0, totalCurrentValue = 0, activeCount = 0;
 
                 stockData.forEach(item => {
                     const priceElement = document.getElementById(`price-${item.symbol}`);
                     if (priceElement) priceElement.innerText = '$' + item.price.toLocaleString(undefined, {minimumFractionDigits: 2});
 
-                    if (myPicks[item.symbol]) {
-                        const entry = myPicks[item.symbol].entry;
-                        const current = item.price;
-                        const pnlPercent = ((current - entry) / entry) * 100;
-
-                        const pnlElement = document.getElementById(`pnl-${item.symbol}`);
+                    const pick = allPicks[item.symbol];
+                    const pnlPercent = ((item.price - pick.entry) / pick.entry) * 100;
+                    const pnlElement = document.getElementById(`pnl-${item.symbol}`);
+                    
+                    if (pnlElement) {
                         pnlElement.innerText = (pnlPercent > 0 ? '+' : '') + pnlPercent.toFixed(2) + '%';
                         pnlElement.className = pnlPercent >= 0 ? 'text-green-400' : 'text-red-400';
+                    }
 
-                        if (myPicks[item.symbol].active) {
-                            totalEntryValue += entry;
-                            totalCurrentValue += current;
-                            activeCount++;
-                        }
+                    if (pick.active) {
+                        totalEntryValue += pick.entry;
+                        totalCurrentValue += item.price;
+                        activeCount++;
                     }
                 });
 
                 if (activeCount > 0) {
-                    const totalPnlPercent = ((totalCurrentValue - totalEntryValue) / totalEntryValue) * 100;
-                    const totalDisplay = document.getElementById('total-pnl');
-                    totalDisplay.innerText = (totalPnlPercent > 0 ? '+' : '') + totalPnlPercent.toFixed(2) + '%';
-                    totalDisplay.className = `text-6xl font-black ${totalPnlPercent >= 0 ? 'text-green-400' : 'text-red-400'}`;
-                    document.getElementById('total-status').innerText = `Syncing live with Google Sheets (${activeCount} active)`;
+                    const totalPnl = ((totalCurrentValue - totalEntryValue) / totalEntryValue) * 100;
+                    const display = document.getElementById('total-pnl');
+                    display.innerText = (totalPnl > 0 ? '+' : '') + totalPnl.toFixed(2) + '%';
+                    display.className = `text-6xl font-black ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`;
                 }
-
-            } catch (e) { 
-                console.error("Update failed", e);
-                document.getElementById('total-status').innerText = "Update failed. Check your Tickers or API key.";
-            }
+            } catch (e) { console.error(e); }
         }
 
         init();
-        // Automatically check the Google Sheet and Stock Prices every 60 seconds
         setInterval(init, 60000);
     </script>
 </body>
